@@ -1,0 +1,116 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+            suffix: linux-amd64
+          - os: ubuntu-24.04-arm
+            rid: linux-arm64
+            suffix: linux-arm64
+          - os: macos-15-intel
+            rid: osx-x64
+            suffix: darwin-amd64
+          - os: macos-latest
+            rid: osx-arm64
+            suffix: darwin-arm64
+          - os: windows-latest
+            rid: win-x64
+            suffix: windows-amd64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Determine version
+        id: version
+        shell: bash
+        run: |
+          VERSION="${{ github.ref_name }}"
+          echo "VERSION=${VERSION#v}" >> "$GITHUB_OUTPUT"
+      - name: Test
+        run: dotnet test cli-GPT-5.6-Sol-csharp.slnx --configuration Release
+      - name: Publish
+        shell: bash
+        run: >-
+          dotnet publish src/RcloneEncrypt/RcloneEncrypt.csproj
+          --configuration Release
+          --runtime ${{ matrix.rid }}
+          --output publish
+          -p:Version=${{ steps.version.outputs.VERSION }}
+      - name: Package binary (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          mv publish/cli-GPT-5.6-Sol-csharp cli-GPT-5.6-Sol-csharp-${{ matrix.suffix }}
+          tar czf cli-GPT-5.6-Sol-csharp-${{ matrix.suffix }}.tar.gz cli-GPT-5.6-Sol-csharp-${{ matrix.suffix }}
+      - name: Rename binary (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: mv publish/cli-GPT-5.6-Sol-csharp.exe cli-GPT-5.6-Sol-csharp-${{ matrix.suffix }}.exe
+      - name: Upload artifact (Unix)
+        if: runner.os != 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-GPT-5.6-Sol-csharp-${{ matrix.suffix }}
+          path: cli-GPT-5.6-Sol-csharp-${{ matrix.suffix }}.tar.gz
+      - name: Upload artifact (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-GPT-5.6-Sol-csharp-${{ matrix.suffix }}
+          path: cli-GPT-5.6-Sol-csharp-${{ matrix.suffix }}.exe
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Determine version
+        id: version
+        shell: bash
+        run: |
+          VERSION="${{ github.ref_name }}"
+          echo "VERSION=${VERSION#v}" >> "$GITHUB_OUTPUT"
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true
+      - name: Switch to main branch
+        run: |
+          git checkout main
+          git pull --rebase origin main
+      - name: Update Scoop manifest
+        shell: pwsh
+        run: ./updatescoop.ps1 -Version ${{ steps.version.outputs.VERSION }}
+      - name: Update Homebrew formula
+        shell: pwsh
+        run: ./updatebrew.ps1 -Version ${{ steps.version.outputs.VERSION }}
+      - name: Commit updated manifests
+        uses: stefanzweifel/git-auto-commit-action@v6
+        with:
+          commit_message: "chore: update package manifests to ${{ github.ref_name }}"
+          file_pattern: "cli-GPT-5.6-Sol-csharp.json Formula/cli-GPT-5.6-Sol-csharp.rb"

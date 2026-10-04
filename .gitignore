@@ -1,2 +1,7 @@
 src/llm-supermarket.exe
 .opencode/
+bin/
+obj/
+artifacts/
+TestResults/
+*.user
