@@ -1,0 +1,17 @@
+{
+  "homepage": "https://github.com/llm-supermarket/cli-GPT-5.6-Sol-csharp",
+  "description": "CLI for encrypting and decrypting rclone crypt files",
+  "version": "0.1.0",
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/llm-supermarket/cli-GPT-5.6-Sol-csharp/releases/download/v0.1.0/cli-GPT-5.6-Sol-csharp-windows-amd64.exe",
+      "hash": "RELEASE_WORKFLOW_UPDATES_THIS_HASH",
+      "bin": [
+        [
+          "cli-GPT-5.6-Sol-csharp-windows-amd64.exe",
+          "cli-GPT-5.6-Sol-csharp"
+        ]
+      ]
+    }
+  }
+}

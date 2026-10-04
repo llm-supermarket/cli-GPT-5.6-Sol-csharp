@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/RcloneEncrypt/RcloneEncrypt.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/RcloneEncrypt.Tests/RcloneEncrypt.Tests.csproj" />
+  </Folder>
+</Solution>
